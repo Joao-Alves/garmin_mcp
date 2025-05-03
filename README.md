@@ -8,17 +8,21 @@ This Model Context Protocol (MCP) server connects to Garmin Connect and exposes 
 - Get detailed activity information
 - Access health metrics (steps, heart rate, sleep)
 - View body composition data
+- Track training status and readiness
+- Monitor devices and gear
+- Manage workouts and challenges
+- Track women's health data
+- Monitor hydration and nutrition
 
 ## Setup
 
-1. Install the required packages on a new environment:
+1. Install the required packages in a new environment:
 
 ```bash
-virtualenv .venv
-source .venv/bin/activate
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
 python -m pip install -r requirements.txt
 ```
-
 
 2. Create a `.env` file in the project root with your Garmin credentials:
 
@@ -27,63 +31,140 @@ GARMIN_EMAIL=your.email@example.com
 GARMIN_PASSWORD=your-password
 ```
 
-## Running the Server
+## Running as an MCP Server
 
-### With Claude Desktop
+The server implements the Model Context Protocol (MCP), allowing AI assistants to access your Garmin data. There are several ways to run it:
 
-1. Create a configuration in Claude Desktop:
+### 1. Direct Python Execution
 
-Edit your Claude Desktop configuration file:
+```bash
+python garmin_mcp_server.py
+```
 
+### 2. With Claude Desktop
+
+1. Create/edit your Claude Desktop configuration:
+
+Location:
 - macOS: `~/Library/Application Support/Claude/claude_desktop_config.json`
 - Windows: `%APPDATA%\Claude\claude_desktop_config.json`
+- Linux: `~/.config/Claude/claude_desktop_config.json`
 
-Add this server configuration:
+Add this configuration:
 
 ```json
 {
   "mcpServers": {
     "garmin": {
-      "command": "python", // if you created a new environment this should be "<root_folder>/.venv/bin/python"
-      "args": ["<path to>/garmin_mcp/garmin_mcp_server.py"]
+      "command": "<path_to_venv>/python",
+      "args": ["<path_to>/garmin_mcp_server.py"]
     }
   }
 }
 ```
 
-Replace the path with the absolute path to your server file.
-
 2. Restart Claude Desktop
 
-### With MCP Inspector
+### 3. Container Deployment
 
-For testing, you can use the MCP Inspector:
+Using Podman:
 
 ```bash
-npx @modelcontextprotocol/inspector python /Users/adomingues/Documents/claude_filesystem/garmin_mcp/garmin_mcp_server.py
+# Using the provided script
+./run.sh
+
+# Or manually
+podman build -t garmin-mcp .
+podman run -d \
+  --name garmin-mcp \
+  --restart unless-stopped \
+  --read-only \
+  --tmpfs /tmp \
+  --env-file .env \
+  -p 8000:8000 \
+  garmin-mcp
 ```
 
-## Usage Examples
+### 4. Development Testing
 
-Once connected in Claude, you can ask questions like:
+Use the MCP Inspector for direct testing:
 
-- "Show me my recent activities"
-- "What was my sleep like last night?"
-- "How many steps did I take yesterday?"
-- "Show me the details of my latest run"
+```bash
+npx @modelcontextprotocol/inspector python garmin_mcp_server.py
+```
 
-## Security Note
+## Available MCP Tools
 
-This server requires your Garmin Connect credentials in the `.env` file. Keep this file secure and never commit it to a repository.
+The server provides tools for:
+
+- Activity Management
+  - List activities
+  - Get activity details
+  - Access splits and segments
+  
+- Health & Wellness
+  - Steps data
+  - Heart rate monitoring
+  - Sleep tracking
+  - Stress levels
+  - Body Battery™
+  - Blood pressure
+  - SpO2 measurements
+  
+- Training & Performance
+  - Training status
+  - Training readiness
+  - VO2 Max
+  - Training effect
+  - Running dynamics
+  
+- Device Management
+  - List devices
+  - Device settings
+  - Solar charging data
+  - Device alarms
+
+## Security Considerations
+
+1. Credential Security:
+   - Store credentials in `.env` file (never commit to repository)
+   - Token storage is encrypted and secure
+   - Container runs as non-root user
+
+2. Data Privacy:
+   - All data remains local
+   - No third-party data sharing
+   - Secure token management
+
+3. Container Security:
+   - Read-only filesystem
+   - Non-root user
+   - Minimal base image
+   - Health monitoring
 
 ## Troubleshooting
 
-If you encounter login issues:
+1. Authentication Issues:
+   - Verify credentials in `.env` file
+   - Check Garmin Connect account status
+   - Clear and regenerate tokens if needed
+   - Try logging in to Garmin Connect website first
 
-1. Verify your credentials in the `.env` file are correct
-2. Check if Garmin Connect requires additional verification
-3. Ensure the garminconnect package is up to date
+2. Connection Problems:
+   - Check internet connectivity
+   - Verify Garmin Connect API status
+   - Check firewall settings
+   - Review container logs
 
-For other issues, check the Claude Desktop logs at:
-- macOS: `~/Library/Logs/Claude/mcp-server-garmin.log`
-- Windows: `%APPDATA%\Claude\logs\mcp-server-garmin.log`
+3. MCP Integration:
+   - Verify MCP client configuration
+   - Check server logs
+   - Test with MCP Inspector
+   - Verify port accessibility
+
+Logs Location:
+- Container: `podman logs garmin-mcp`
+- Claude Desktop:
+  - macOS: `~/Library/Logs/Claude/mcp-server-garmin.log`
+  - Windows: `%APPDATA%\Claude\logs\mcp-server-garmin.log`
+  - Linux: `~/.local/share/Claude/logs/mcp-server-garmin.log`
