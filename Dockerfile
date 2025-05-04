@@ -33,7 +33,13 @@ COPY --from=builder /opt/venv /opt/venv
 # Set environment variables
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    MCP_MODE=1 \
+    GARMINTOKENS="/app/.garminconnect"
+
+# Create token directory with proper permissions
+RUN mkdir -p /app/.garminconnect && \
+    chown -R garmin:garmin /app/.garminconnect
 
 # Copy application code
 COPY . .
@@ -43,13 +49,6 @@ RUN chown -R garmin:garmin /app
 
 # Switch to non-root user
 USER garmin
-
-# Set token storage location to within container
-ENV GARMINTOKENS="/app/.garminconnect"
-
-# Health check
-HEALTHCHECK --interval=30s --timeout=30s --start-period=5s --retries=3 \
-    CMD python -c "import requests; requests.get('http://localhost:8000/health')"
 
 # Run the application
 CMD ["python", "garmin_mcp_server.py"]
